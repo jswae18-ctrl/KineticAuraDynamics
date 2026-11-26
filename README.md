@@ -1,42 +1,49 @@
 # AuraDynamicsEngine
-(RELEASE NAME: Kinetic Aura Dynamics)
+
+**Kinetic Aura Dynamics**
 
 ![AuraDynamicsEngine](docs/images/hero.png)
 
-AuraDynamicsEngine is a custom C++/DirectX 11 engine I've been building to get deeper into graphics programming and engine architecture. I use Unreal as well, but I wanted a project where I had to work directly with the rendering pipeline, input, cameras, resources, and the systems around them instead of having those parts handled for me.
+AuraDynamicsEngine is a custom C++/DirectX 11 engine I've been building to get deeper into graphics programming and engine development. I use Unreal as well, but I wanted a project where I had to work directly with the rendering pipeline, shaders, input, cameras, resources, and the systems connecting everything instead of having most of that handled for me.
 
-This repo is a working checkpoint of the engine, not the finished architecture. Some systems are staying, some are being replaced, and there's newer foundation work that I'm keeping separate until it's far enough along to actually belong here.
+This repo is a working checkpoint, not a finished engine. The engine itself is the main project here. It also includes the current AuraPlatform foundation that the engine has started using while I work toward a more reusable architecture.
 
 ## Current Features
 
 - DirectX 11 rendering
 - Procedurally generated sphere geometry
 - Custom HLSL shaders
-- Earth lighting driven by the Sun's world position
+- Earth lighting based on the Sun's actual world position
 - Normal mapping, ocean specular, night lights, and animated clouds
 - Textured Sun rendering
-- Star and Milky Way space background
+- Star and Milky Way background
+- Earth orbit and rotation
 - Free-flight camera
-- Earth focus and moving-target tracking
+- Moving-target Earth focus and tracking
 - Custom keyboard and mouse input
 - Custom HUD panels and controls
 - Early runtime editor/launcher
+- Structured diagnostics through AuraPlatform
 
 ![Earth and Sun lighting](docs/images/earth-sun-lighting.png)
 
 ## Rendering
 
-`SphereMesh` handles the reusable sphere geometry and common rendering work. Earth, Sun, and Space build their own behavior around it instead of putting planet-specific logic into the mesh itself.
+`SphereMesh` handles reusable sphere geometry and the common rendering work needed by spherical objects. Earth, Sun, and Space build their own behavior around it instead of pushing planet-specific material logic into the mesh itself.
 
-Earth currently uses five texture inputs: day color, ocean/specular, night lights, normal mapping, and clouds. The shader uses the Sun's world-space position to work out which side of Earth is actually facing the light. The geometric normal controls the large-scale day/night split, while the normal map is used for smaller surface detail.
+Earth currently uses five texture inputs: day color, ocean/specular, night lights, normal mapping, and clouds. The shader uses the Sun's world-space position to determine which side of Earth is actually facing the light.
 
-Earth has its own rotation, and `PlanetOrbit` handles its movement around the Sun.
+The geometric normal controls the large-scale day/night split. The normal map adds the smaller surface lighting detail without changing which hemisphere is actually facing the Sun.
+
+Earth also has its own rotation, while `PlanetOrbit` handles its movement around the Sun.
 
 ## Camera
 
 The camera currently has three modes: free flight, returning to focus, and tracking focus.
 
-Free flight is the normal keyboard and mouse camera. Focus mode is built around Earth being a moving target. While the camera is returning, it first follows Earth's frame-to-frame movement and then closes the remaining distance relative to Earth. Once it arrives, it stays locked to the moving target.
+Free flight is the normal keyboard and mouse camera.
+
+The focus system is a little different because Earth is moving while the camera is trying to reach it. During the return, the camera first inherits Earth's frame-to-frame movement and then closes the remaining distance relative to Earth. Once it reaches the target position, tracking mode keeps it attached to the moving Earth instead of continuously chasing where Earth used to be.
 
 ### Controls
 
@@ -53,64 +60,92 @@ Free flight is the normal keyboard and mouse camera. Focus mode is built around 
 
 The current HUD is my custom panel system. It handles reusable panel windows, buttons, text, images, mouse interaction, minimize/restore behavior, and the specialized panels built on top of it.
 
-The current build has Camera Speed, CPU Data, System Status, and an Aura Editor entry panel. Aura Editor can open the larger Editor Launcher, which is where I've started experimenting with runtime authoring tools.
+The current build has Camera Speed, CPU Data, System Status, and a small Aura Editor entry panel. Aura Editor opens the larger Editor Launcher, which is where I've started experimenting with runtime authoring tools.
 
-This HUD is working, but it isn't the UI architecture I want to keep building on forever. I'm keeping the current version stable while I work on the newer runtime UI system separately.
+This HUD works, but it isn't the UI architecture I want to keep extending forever. I'm keeping the working system stable while I build the newer runtime architecture alongside it.
 
-## Known Limitation
+### Known Limitation
 
-The current HUD can get panel overlap during aggressive window resizing. I started experimenting with centralized collision handling for it, but the extra behavior made the legacy system worse in other ways.
+Aggressive window resizing can cause some of the independently anchored HUD panels to overlap.
 
-I rolled that attempt back and kept the stable layout instead. Since this UI architecture is already being replaced, I'd rather solve cross-panel layout in the new system than keep adding temporary systems to this one.
+I experimented with centralized overlap handling, but it ended up making the existing HUD worse by hiding panels and introducing bad resize behavior. I rolled that work back rather than keeping a system I didn't trust.
 
-Normal operation at the intended window sizes is unaffected.
+Since the current HUD is eventually being replaced, I'd rather solve that problem properly in the newer architecture than keep stacking temporary fixes onto the old one.
+
+Normal use at the intended window sizes is unaffected.
+
+## AuraPlatform
+
+AuraDynamicsEngine started purely as an engine project, but over time I've also started building a reusable foundation called `AuraPlatform`.
+
+The engine is still the main application. AuraPlatform is the newer side of the project where I'm working on common systems that shouldn't belong specifically to rendering, UI, or one application.
+
+The current foundation includes work around:
+
+- `AuraID` for shared identity
+- common error/result handling
+- command definitions and registration
+- capability-based authorization
+- structured diagnostics
+- basic version contracts
+- automated tests around the implemented platform behavior
+
+The engine already uses part of this foundation for diagnostics.
+
+There is a much larger direction I want to take AuraPlatform in, but I'm deliberately not presenting that roadmap as finished software. The code in this repository represents the part that actually exists today.
 
 ## Where It's Going
 
-AuraDynamicsEngine started as an engine project, but the longer-term goal is bigger than graphics or game development. I want AuraDynamics to eventually grow into a broader programming and technology platform that can support different kinds of software and technical systems without every area becoming its own disconnected architecture.
+Long term, I want Kinetic Aura Dynamics to grow beyond one engine.
 
-One of the foundations I'm building toward that goal is a shared identity system based around `AuraID`. Instead of letting every future subsystem invent its own unrelated way to identify resources, commands, diagnostics, UI elements, services, and other objects, the idea is to give Aura systems a common identity contract.
+The idea is to build software and technical systems that can share well-defined contracts instead of every new application becoming its own disconnected architecture.
 
-That identity layer is also part of how I'm thinking about compatibility between systems. If separate Aura components can refer to things through stable shared identities and well-defined contracts, they have a better foundation for communicating without needing to know each other's internal implementation.
+`AuraID` is one early part of that idea. Different systems can use the same identity primitive while the system that owns an ID still decides what that identity actually means.
 
-I'm not claiming that cross-system architecture is finished today. `AuraID` is an early foundation, and the surrounding error/result, diagnostics, command, runtime UI, and other platform systems are still being designed and integrated.
+Identity by itself doesn't make separate systems compatible. Real compatibility also needs clear contracts around things like versioning, authorization, data formats, behavior, ownership, lifetime, and communication between systems.
 
-Most of that work isn't in this portfolio checkpoint yet. I would rather keep this repo centered on the engine that actually runs and show the newer architecture as it becomes real instead of filling the project with unfinished systems just to make it look bigger.
+That's the direction I'm working toward, not something I'm claiming is already complete.
 
 ## Building
 
 AuraDynamicsEngine is currently developed on Windows using C++, DirectX 11, HLSL, Win32, DirectXMath, and DirectX Tool Kit components.
 
-I'm in the process of preparing the repo for a clean build outside of my normal development environment. Exact fresh-clone build instructions will be added once I've finished checking the dependencies and the assets that are allowed to ship with the public version.
+I'm preparing the repository for a clean build outside my normal development directory. Exact fresh-clone build instructions will replace this section once I've verified the complete setup from a separate clone.
 
 ## Third-Party Work
 
-The engine uses third-party libraries and some external visual assets. I don't present those as my own work.
+The engine uses third-party libraries and external visual assets. I don't present those as my own work.
 
-I'm reviewing those dependencies and assets before the public release so their original licenses, ownership, and redistribution requirements are clear.
+DirectX Tool Kit is included as a third-party dependency, and the repository retains its original license information. DirectXMath and other external dependencies/assets remain subject to their respective licenses and usage terms.
+
+I'm checking the redistribution requirements for the external rendering assets before making the repository public.
+
+See `THIRD_PARTY_NOTICES.md` for the current dependency information.
 
 ## Development Process
 
-I do use AI-assisted tools, including Microsoft Copilot, while working on AuraDynamicsEngine. I use them for things like debugging, reviewing code, researching unfamiliar areas, and pressure-testing/refactoring ideas.
+I use AI-assisted tools, including Microsoft Copilot, while working on AuraDynamicsEngine. I mainly use them for debugging, researching unfamiliar areas, reviewing code, and pressure-testing or refactoring ideas.
 
-I don't treat generated code as automatically correct. I still decide how the systems fit together, integrate the changes, build and run them, trace problems when something breaks, and roll changes back when they make the engine worse. I only want code in the project that I can follow and explain myself.
+I don't treat generated code as automatically correct. I decide how the systems fit together, integrate and test changes, trace problems when something breaks, and roll changes back when they make the engine worse. I only want code in this project that I can follow and explain myself.
 
-A big reason I'm building this engine in the first place is to get better at reasoning through C++, graphics code, ownership, data flow, and architecture instead of just getting something working.
+A big reason I'm building the engine is to get better at reasoning through C++, graphics programming, ownership, data flow, and architecture instead of only getting something working.
 
 ## About the Project
 
-AuraDynamicsEngine has changed a lot as I've gotten better at C++ and graphics programming. I've rewritten parts after understanding the responsibility better, moved things when they were living in the wrong layer, and learned that adding another abstraction isn't automatically an improvement.
+AuraDynamicsEngine has changed a lot as I've gotten better at C++ and graphics programming.
 
-The long-term idea behind AuraDynamics is to take what I learn building the engine and use those foundations beyond the engine itself. I want to build a technology company capable of working across different areas of software and technical development while keeping the underlying systems structured enough to work together.
+I've rewritten systems after understanding their responsibility better, moved code when I realized it was living in the wrong layer, and learned that adding another abstraction doesn't automatically make a design better.
 
-That's why things like identity, dependency direction, shared contracts, and system boundaries matter to me even when the current engine doesn't need every part of that architecture yet.
+Kinetic Aura Dynamics is the larger direction I'm building toward. AuraDynamicsEngine is the working engine that started it, while AuraPlatform is the beginning of the shared foundation I want future systems to build on.
 
-I'm not trying to present AuraDynamicsEngine as a finished commercial engine or the larger Aura vision as something that's already built. This is the working system I have today, and I want the repo to show both what works now and how I'm approaching the engineering needed to take it further.
+I'm not presenting AuraDynamicsEngine as a finished commercial engine or AuraPlatform as a finished universal platform. This repository is a snapshot of what I actually have working today and the engineering direction I'm taking from here.
 
 ## License
 
-AuraDynamicsEngine is currently published as a portfolio and development project. Unless a file or third-party component states otherwise, I am not currently granting a general license to copy, redistribute, modify, or use the original AuraDynamicsEngine source in another project.
+AuraDynamicsEngine is currently published as a portfolio and development project.
+
+Unless a file or third-party component states otherwise, I'm not currently granting general permission to copy, redistribute, modify, or use my original AuraDynamicsEngine source in another project.
 
 Third-party libraries and assets remain covered by their own licenses and usage terms.
 
-I may choose a formal software license for AuraDynamicsEngine in the future as the project and the larger AuraDynamics platform develop.
+I may choose a formal software license later as AuraDynamicsEngine and the larger Kinetic Aura Dynamics project develop.
