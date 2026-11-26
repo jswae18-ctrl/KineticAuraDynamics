@@ -159,8 +159,7 @@ AuraDynamicsEngine is currently developed on Windows using:
 - DirectXMath
 - DirectX Tool Kit
 
-This repository is currently a development and portfolio checkpoint. I'll replace this section with exact build requirements and instructions once I've verified the setup outside my normal development environment instead of writing instructions I haven't actually tested.
-
+This repository is a development and portfolio checkpoint of the engine. The source and project structure are included for technical review, but I'm not presenting this release as a packaged or supported engine distribution.
 ## Tests
 
 `AuraDynamicsEngine.Tests` uses Google Test against the production AuraPlatform implementation.
@@ -185,8 +184,6 @@ The engine uses third-party libraries and external visual assets. I don't presen
 DirectX Tool Kit is included as a third-party dependency, and its original license information is kept with the vendored source.
 
 DirectXMath and other external dependencies and assets remain covered by their own licenses and usage terms.
-
-External rendering assets remain the property of their respective creators and are included according to their applicable usage and redistribution terms. Attribution and source information is listed in `THIRD_PARTY_NOTICES.md` where required.
 
 See `THIRD_PARTY_NOTICES.md` for the current dependency information.
 
